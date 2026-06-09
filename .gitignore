@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Build output — the renderer bundle and the packaged installers.
+# The .exe is published to GitHub Releases, never committed to the repo.
+dist/
+dist-electron/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime / local data
+.cache/
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor / local tooling
+.vscode/
+.idea/
+*.swp
+.claude/
+CLAUDE.md
+
+# Environment / secrets (never commit your GH_TOKEN)
+.env
+.env.local
+.env.*.local
+
+# Note: resources/ is intentionally NOT ignored — wp-cli.phar, caddy.exe and
+# phpMyAdmin are bundled into the build via electron-builder extraResources.

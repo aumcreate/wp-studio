@@ -1,0 +1,114 @@
+{
+  "name": "wp-studio",
+  "version": "0.1.0",
+  "description": "Local WordPress development environment manager with shared theme pool",
+  "main": "src/main/index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:renderer\" \"wait-on http://localhost:5173 && npm run dev:electron\"",
+    "dev:renderer": "vite",
+    "dev:electron": "cross-env NODE_ENV=development electron .",
+    "build": "npm run build:renderer && npm run build:electron",
+    "build:renderer": "vite build",
+    "build:electron": "electron-builder",
+    "checksums": "node scripts/checksums.cjs",
+    "release": "npm run build:renderer && electron-builder --win --publish always && npm run checksums",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.10",
+    "axios": "^1.6.7",
+    "better-sqlite3": "^9.4.3",
+    "electron-updater": "^6.3.9",
+    "fs-extra": "^11.2.0",
+    "got": "^11.8.6",
+    "http-proxy-agent": "^5.0.0",
+    "https-proxy-agent": "^5.0.1",
+    "i18next": "^26.3.1",
+    "mysql2": "^3.22.3",
+    "node-cron": "^3.0.3",
+    "portfinder": "^1.0.32",
+    "react-i18next": "^17.0.8",
+    "slugify": "^1.6.6"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.17",
+    "clsx": "^2.1.0",
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "electron": "^29.1.0",
+    "electron-builder": "^24.13.3",
+    "lucide-react": "^0.344.0",
+    "postcss": "^8.4.35",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.22.2",
+    "tailwindcss": "^3.4.1",
+    "vite": "^5.1.4",
+    "wait-on": "^7.2.0",
+    "zustand": "^4.5.2"
+  },
+  "build": {
+    "appId": "com.aum.wpstudio",
+    "productName": "AUM WP Studio",
+    "asar": false,
+    "directories": {
+      "output": "dist-electron"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "aumcreate",
+        "repo": "wp-studio"
+      }
+    ],
+    "extraResources": [
+      {
+        "from": "resources/bin",
+        "to": "resources/bin",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "files": [
+      "dist/**/*",
+      "src/main/**/*",
+      "node_modules/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "resources/icons/icon.icns"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "requestedExecutionLevel": "requireAdministrator",
+      "icon": "resources/icons/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "installerIcon": "resources/icons/icon.ico",
+      "uninstallerIcon": "resources/icons/icon.ico",
+      "installerHeaderIcon": "resources/icons/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "AUM WP Studio",
+      "include": "build/installer.nsh",
+      "deleteAppDataOnUninstall": false
+    },
+    "icon": "resources/icons/icon.png"
+  }
+}

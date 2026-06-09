@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --app-titlebar-height: 38px;
+  --primary:      #e8501a;
+  --secondary:    #eeeeee;
+  --bg:           #ffffff;
+  --scrollbar:    #c1c1c1;
+  --card-bg:      #ffffff;
+  --border:       rgba(0, 0, 0, 0.1);
+  --text-muted:   #888888;
+  --text-on-bg:   hsl(0, 0%, 15%);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text-on-bg);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #aaaaaa; }
+
+/* Electron drag region for frameless window */
+.app-drag-region {
+  -webkit-app-region: drag;
+}
+.app-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+@layer utilities {
+  .glass {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+  }
+}
+
+@layer components {
+  .input {
+    width: 100%;
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+    color: var(--text-on-bg);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(232, 80, 26, 0.12); }
+  .input::placeholder { color: var(--text-muted); }
+  .input option { background: #ffffff; color: var(--text-on-bg); }
+
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--primary);
+    color: white; font-size: 14px; font-weight: 500;
+    padding: 8px 18px; border-radius: 8px;
+    transition: background 0.15s, opacity 0.15s;
+    cursor: pointer;
+    border: none;
+  }
+  .btn-primary:hover:not(:disabled) { background: #d03e10; }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-secondary {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--secondary);
+    color: var(--text-on-bg); font-size: 14px; font-weight: 500;
+    padding: 8px 14px; border-radius: 8px;
+    border: 1px solid var(--border);
+    transition: background 0.15s, color 0.15s;
+    cursor: pointer;
+  }
+  .btn-secondary:hover:not(:disabled) { background: #e0e0e0; }
+  .btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-ghost {
+    display: inline-flex; align-items: center; gap: 4px;
+    color: var(--text-muted); font-size: 14px;
+    padding: 8px 12px; border-radius: 8px;
+    background: transparent; border: none;
+    transition: color 0.15s, background 0.15s;
+    cursor: pointer;
+  }
+  .btn-ghost:hover { color: var(--text-on-bg); background: var(--secondary); }
+}

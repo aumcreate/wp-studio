@@ -1,0 +1,5 @@
+const Database = require('better-sqlite3')
+const db = new Database('C:/Users/Zoidberg/AppData/Roaming/wp-studio/wpstudio.db')
+db.prepare("UPDATE sites SET status = 'stopped'").run()
+console.log('Done — all sites reset to stopped')
+db.close()
