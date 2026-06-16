@@ -27,7 +27,7 @@ function getPmaConfigDir(siteId) {
     return path.join(app.getPath('userData'), 'phpmyadmin', siteId)
 }
 
-// ─── Port helper ──────────────────────────────────────────────────────────────
+// ─── Port helpers ─────────────────────────────────────────────────────────────
 
 function findFreePort(start = 9200) {
     return new Promise((resolve, reject) => {
@@ -42,16 +42,42 @@ function findFreePort(start = 9200) {
     })
 }
 
+// Resolves once a TCP connection to the port succeeds, or rejects after timeout.
+// Used to confirm the PHP built-in server has actually bound the port before
+// we open the browser — a fixed delay races on slower machines.
+function waitForPort(port, timeoutMs = 8000) {
+    const deadline = Date.now() + timeoutMs
+    return new Promise((resolve, reject) => {
+        function attempt() {
+            const socket = net.connect(port, '127.0.0.1')
+            socket.once('connect', () => { socket.destroy(); resolve() })
+            socket.once('error', () => {
+                socket.destroy()
+                if (Date.now() > deadline) reject(new Error(`Timed out waiting for phpMyAdmin server on port ${port}`))
+                else setTimeout(attempt, 150)
+            })
+        }
+        attempt()
+    })
+}
+
 // ─── Config generation ────────────────────────────────────────────────────────
 
 // Generates a minimal config.inc.php for phpMyAdmin that:
 // - connects to the bundled MariaDB on the correct port
 // - uses cookie-based auth with auto-login for root (no password)
 async function writeConfig(siteId, mysqlPort) {
-    // Write config.inc.php directly into the phpMyAdmin directory
-    // phpMyAdmin looks for config.inc.php in its own root directory
+    // phpMyAdmin loads config.inc.php from its own root directory (CONFIG_FILE),
+    // so it must be written there. In packaged builds that directory lives under
+    // the install path; the app runs elevated, so the write succeeds.
     const pmaDir = getPmaDir()
     await fs.ensureDir(pmaDir)
+
+    // Point phpMyAdmin's template/cache writes at a guaranteed-writable location
+    // in userData, so it never depends on the install directory being writable.
+    const tempDir = path.join(app.getPath('userData'), 'phpmyadmin', 'tmp')
+    await fs.ensureDir(tempDir)
+    const tempDirPhp = tempDir.replace(/\\/g, '/')
 
     const blowfish = (siteId.replace(/-/g, '') + '0000000000000000').slice(0, 32)
 
@@ -69,6 +95,7 @@ $cfg['Servers'][$i]['user']            = 'root';
 $cfg['Servers'][$i]['password']        = '';
 $cfg['UploadDir'] = '';
 $cfg['SaveDir']   = '';
+$cfg['TempDir']   = '${tempDirPhp}';
 $cfg['SendErrorReports'] = 'never';
 `
     await fs.writeFile(path.join(pmaDir, 'config.inc.php'), config)
@@ -101,31 +128,54 @@ async function startPma(siteId, phpVersion = '8.2') {
     const port = await findFreePort(9200)
 
     // PHP built-in server: php.exe -S 127.0.0.1:<port> -t <pmaDir>
-    // PHPRC points to our per-site config dir so phpMyAdmin picks up config.inc.php
+    // PHPRC points PHP at its own install directory so it reliably loads the
+    // generated php.ini (with mysqli/mbstring) regardless of the launch cwd.
     const proc = spawn(phpExe, ['-S', `127.0.0.1:${port}`, '-t', pmaDir], {
         stdio: ['ignore', 'pipe', 'pipe'],
         windowsHide: true,
         env: {
             ...process.env,
+            PHPRC: path.dirname(phpExe),
         },
     })
+
+    // Drain stdout/stderr so the PHP process never blocks on a full pipe buffer,
+    // and keep the most recent stderr output for diagnostics on startup failure.
+    let lastErr = ''
+    proc.stdout?.on('data', (d) => { /* request log — discarded */ void d })
+    proc.stderr?.on('data', (d) => { lastErr = d.toString().trim() })
 
     _procs[siteId] = proc
     _ports[siteId] = port
 
-    proc.on('exit', () => {
+    let exited = false
+    proc.on('exit', (code) => {
+        exited = true
         delete _procs[siteId]
         delete _ports[siteId]
+        if (code) console.error(`[PMA] PHP server for site ${siteId} exited with code ${code}: ${lastErr}`)
     })
 
     proc.on('error', (err) => {
+        exited = true
         console.error(`[PMA] PHP server error for site ${siteId}:`, err.message)
         delete _procs[siteId]
         delete _ports[siteId]
     })
 
-    // Give PHP a moment to bind the port
-    await new Promise(r => setTimeout(r, 600))
+    // Wait until the server is actually accepting connections before returning,
+    // so callers never open the browser at a port that is not yet (or never) up.
+    try {
+        await waitForPort(port)
+    } catch (err) {
+        try { proc.kill() } catch { }
+        delete _procs[siteId]
+        delete _ports[siteId]
+        const detail = exited
+            ? 'the PHP process exited on startup'
+            : 'the server did not respond in time'
+        throw new Error(`phpMyAdmin failed to start (${detail})${lastErr ? `: ${lastErr}` : ''}`)
+    }
 
     console.log(`[PMA] Started for site ${siteId} on port ${port}`)
     return port

@@ -49,6 +49,7 @@
     "openTerminal": "打开终端",
     "openInEditor": "用 VS Code 打开",
     "openEditorFailed": "无法打开 VS Code：{{error}}",
+    "openDatabaseFailed": "无法打开数据库管理器：{{error}}",
     "editSite": "编辑站点",
     "deleteSite": "删除站点"
   },

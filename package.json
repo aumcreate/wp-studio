@@ -1,6 +1,6 @@
 {
   "name": "wp-studio",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Local WordPress development environment manager with shared theme pool",
   "main": "src/main/index.js",
   "scripts": {
@@ -68,6 +68,14 @@
         "to": "resources/bin",
         "filter": [
           "**/*"
+        ]
+      },
+      {
+        "from": "resources/phpmyadmin",
+        "to": "resources/phpmyadmin",
+        "filter": [
+          "**/*",
+          "!config.inc.php"
         ]
       }
     ],

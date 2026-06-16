@@ -34,3 +34,6 @@ CLAUDE.md
 
 # Note: resources/ is intentionally NOT ignored — wp-cli.phar, caddy.exe and
 # phpMyAdmin are bundled into the build via electron-builder extraResources.
+# Exception: phpMyAdmin's config.inc.php is generated at runtime (machine-specific
+# paths + secret) and excluded from the build, so it must not be tracked.
+resources/phpmyadmin/config.inc.php

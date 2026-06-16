@@ -49,6 +49,7 @@
     "openTerminal": "Open terminal",
     "openInEditor": "Open in VS Code",
     "openEditorFailed": "Could not open VS Code: {{error}}",
+    "openDatabaseFailed": "Could not open the database manager: {{error}}",
     "editSite": "Edit site",
     "deleteSite": "Delete site"
   },

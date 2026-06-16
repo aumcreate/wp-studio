@@ -126,6 +126,10 @@ export default function SitesPage() {
               const res = await window.api.sites.openInEditor(site.id)
               if (!res.ok) alert(t('sites.openEditorFailed', { error: res.error }))
             }}
+            onOpenPma={async () => {
+              const res = await window.api.sites.openPma(site.id)
+              if (res && !res.ok) alert(t('sites.openDatabaseFailed', { error: res.error }))
+            }}
           />
         ))}
         {filteredSites.length === 0 && search && (
@@ -164,7 +168,8 @@ export default function SitesPage() {
   )
 }
 
-function SiteCard({ site, deleting, toggling, onDelete, onToggle, onEdit, onOpenTerminal, onOpenEditor }) {
+function SiteCard({ site, deleting, toggling, onDelete, onToggle, onEdit, onOpenTerminal, onOpenEditor, onOpenPma }) {
+  const [openingPma, setOpeningPma] = useState(false)
   const { t } = useTranslation()
   const isRunning   = site.status === 'running'
   const isReachable = isRunning && site.reachable === true
@@ -214,7 +219,13 @@ function SiteCard({ site, deleting, toggling, onDelete, onToggle, onEdit, onOpen
           <ActionBtn onClick={() => window.api.sites.openAdmin(site.id)} title={t('sites.openAdmin')}   disabled={!isRunning}><Settings size={14} /></ActionBtn>
           <ActionBtn onClick={() => window.api.sites.openFolder(site.id)} title={t('sites.openFolder')}               ><FolderOpen size={14} /></ActionBtn>
           <ActionBtn onClick={onOpenEditor}                               title={t('sites.openInEditor')}              ><Code2 size={14} /></ActionBtn>
-          <ActionBtn onClick={() => window.api.sites.openPma(site.id)}   title={t('sites.openDatabase')} disabled={!isRunning}><Database size={14} /></ActionBtn>
+          <ActionBtn
+            onClick={async () => { setOpeningPma(true); try { await onOpenPma() } finally { setOpeningPma(false) } }}
+            title={t('sites.openDatabase')}
+            disabled={!isRunning || openingPma}
+          >
+            {openingPma ? <Loader2 size={14} className="animate-spin" /> : <Database size={14} />}
+          </ActionBtn>
           <ActionBtn onClick={onOpenTerminal}                              title={t('sites.openTerminal')}              ><TerminalSquare size={14} /></ActionBtn>
           <ActionBtn onClick={onEdit}                                      title={t('sites.editSite')}   disabled={deleting || toggling}><Pencil size={14} /></ActionBtn>
           <ActionBtn onClick={onDelete}                                    title={t('sites.deleteSite')} disabled={deleting || toggling} danger><Trash2 size={14} /></ActionBtn>
