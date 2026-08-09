@@ -12,6 +12,9 @@ contextBridge.exposeInMainWorld('api', {
     openAdmin: (id) => ipcRenderer.invoke('sites:openAdmin', id),
     openFolder: (id) => ipcRenderer.invoke('sites:openFolder', id),
     getStatus: (id) => ipcRenderer.invoke('sites:getStatus', id),
+    getContent: (id) => ipcRenderer.invoke('sites:getContent', id),
+    captureContent: (data) => ipcRenderer.invoke('sites:captureContent', data),
+    openScreenshots: (data) => ipcRenderer.invoke('sites:openScreenshots', data),
     openPma: (id) => ipcRenderer.invoke('sites:openPma', id),
     update: (data) => ipcRenderer.invoke('sites:update', data),
     openTerminal: (id) => ipcRenderer.invoke('sites:openTerminal', id),
@@ -70,7 +73,7 @@ contextBridge.exposeInMainWorld('api', {
   on: (channel, callback) => {
     const allowed = [
       'site:statusChanged', 'site:log',
-      'site:healthChanged',
+      'site:healthChanged', 'site:screenshotProgress',
       'mysql:progress', 'mysql:ready', 'mysql:error',
       'services:progress', 'services:ready', 'services:phpStatus',
       'integration:progress',

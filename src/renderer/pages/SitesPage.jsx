@@ -1,14 +1,12 @@
 import React, { useState, useMemo } from 'react'
 import {
-  Plus, Globe, FolderOpen, Settings, Trash2,
-  ExternalLink, Circle, Play, Square, Loader2,
-  Pencil, X, Check, AlertCircle, Palette,
-  TerminalSquare, Search, Code2,
+  Plus, Globe, Circle, Play, Square, Loader2,
+  X, Check, AlertCircle, Palette, Search,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../store'
 import CreateSiteModal from '../components/sites/CreateSiteModal'
-import { Database } from 'lucide-react'
+import SiteDetailsPanel from '../components/sites/SiteDetailsPanel'
 
 export default function SitesPage() {
   const { t } = useTranslation()
@@ -17,6 +15,7 @@ export default function SitesPage() {
   const [deletingId, setDeletingId] = useState(null)
   const [togglingId, setTogglingId] = useState(null)
   const [editingSite, setEditingSite] = useState(null)
+  const [detailSiteId, setDetailSiteId] = useState(null)
   const [search, setSearch] = useState('')
 
   const filteredSites = useMemo(() => {
@@ -29,11 +28,34 @@ export default function SitesPage() {
   }, [sites, search])
 
   async function handleDelete(site) {
-    if (!confirm(t('sites.deleteConfirm', { name: site.name }))) return
+    if (!confirm(t('sites.deleteConfirm', { name: site.name }))) return false
     setDeletingId(site.id)
-    await window.api.sites.delete(site.id)
-    removeSite(site.id)
-    setDeletingId(null)
+    try {
+      const res = await window.api.sites.delete(site.id)
+      if (res.ok) {
+        removeSite(site.id)
+        return true
+      }
+      alert(res.error)
+      return false
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  async function startSite(site) {
+    setTogglingId(site.id)
+    try {
+      const res = await window.api.sites.start(site.id)
+      if (res.ok && res.data) updateSite(res.data)
+      else await fetchSites()
+      return res
+    } catch (err) {
+      console.error('[Sites] Start failed:', err)
+      return { ok: false, error: err.message }
+    } finally {
+      setTogglingId(null)
+    }
   }
 
   async function handleToggle(site) {
@@ -57,6 +79,18 @@ export default function SitesPage() {
       setTogglingId(null)
     }
   }
+
+  async function handleOpenEditor(site) {
+    const res = await window.api.sites.openInEditor(site.id)
+    if (!res.ok) alert(t('sites.openEditorFailed', { error: res.error }))
+  }
+
+  async function handleOpenPma(site) {
+    const res = await window.api.sites.openPma(site.id)
+    if (res && !res.ok) alert(t('sites.openDatabaseFailed', { error: res.error }))
+  }
+
+  const detailSite = sites.find(site => site.id === detailSiteId)
 
   return (
     <div className="p-8 h-full overflow-auto">
@@ -118,18 +152,8 @@ export default function SitesPage() {
             site={site}
             deleting={deletingId === site.id}
             toggling={togglingId === site.id}
-            onDelete={() => handleDelete(site)}
             onToggle={() => handleToggle(site)}
-            onEdit={() => setEditingSite(site)}
-            onOpenTerminal={() => window.api.sites.openTerminal(site.id)}
-            onOpenEditor={async () => {
-              const res = await window.api.sites.openInEditor(site.id)
-              if (!res.ok) alert(t('sites.openEditorFailed', { error: res.error }))
-            }}
-            onOpenPma={async () => {
-              const res = await window.api.sites.openPma(site.id)
-              if (res && !res.ok) alert(t('sites.openDatabaseFailed', { error: res.error }))
-            }}
+            onOpenDetails={() => setDetailSiteId(site.id)}
           />
         ))}
         {filteredSites.length === 0 && search && (
@@ -164,18 +188,43 @@ export default function SitesPage() {
           }}
         />
       )}
+
+      {detailSite && (
+        <SiteDetailsPanel
+          site={detailSite}
+          onClose={() => setDetailSiteId(null)}
+          onStart={() => startSite(detailSite)}
+          onOpenEditor={() => handleOpenEditor(detailSite)}
+          onOpenPma={() => handleOpenPma(detailSite)}
+          onEdit={() => {
+            setDetailSiteId(null)
+            setEditingSite(detailSite)
+          }}
+          onDelete={async () => {
+            const deleted = await handleDelete(detailSite)
+            if (deleted) setDetailSiteId(null)
+          }}
+        />
+      )}
     </div>
   )
 }
 
-function SiteCard({ site, deleting, toggling, onDelete, onToggle, onEdit, onOpenTerminal, onOpenEditor, onOpenPma }) {
-  const [openingPma, setOpeningPma] = useState(false)
+function SiteCard({ site, deleting, toggling, onToggle, onOpenDetails }) {
   const { t } = useTranslation()
   const isRunning   = site.status === 'running'
   const isReachable = isRunning && site.reachable === true
 
   return (
-    <div className="bg-surface-100 border border-ink-5 rounded-xl p-5 flex items-center gap-5 hover:border-ink-10 transition-colors group">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpenDetails}
+      onKeyDown={event => {
+        if (event.key === 'Enter' || event.key === ' ') onOpenDetails()
+      }}
+      className="bg-surface-100 border border-ink-5 rounded-xl p-5 flex items-center gap-5 hover:border-brand-500/35 hover:bg-surface-200 transition-colors group cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500/40"
+    >
       <div className="shrink-0">
         <Circle
           size={10}
@@ -202,7 +251,7 @@ function SiteCard({ site, deleting, toggling, onDelete, onToggle, onEdit, onOpen
         </div>
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1" onClick={event => event.stopPropagation()}>
         <button
           onClick={onToggle}
           disabled={toggling || deleting}
@@ -214,39 +263,14 @@ function SiteCard({ site, deleting, toggling, onDelete, onToggle, onEdit, onOpen
           {toggling ? <Loader2 size={14} className="animate-spin" /> : isRunning ? <Square size={14} /> : <Play size={14} />}
         </button>
 
-        <div className="flex items-center gap-1">
-          <ActionBtn onClick={() => window.api.sites.open(site.id)}      title={t('sites.openSite')}    disabled={!isRunning}><ExternalLink size={14} /></ActionBtn>
-          <ActionBtn onClick={() => window.api.sites.openAdmin(site.id)} title={t('sites.openAdmin')}   disabled={!isRunning}><Settings size={14} /></ActionBtn>
-          <ActionBtn onClick={() => window.api.sites.openFolder(site.id)} title={t('sites.openFolder')}               ><FolderOpen size={14} /></ActionBtn>
-          <ActionBtn onClick={onOpenEditor}                               title={t('sites.openInEditor')}              ><Code2 size={14} /></ActionBtn>
-          <ActionBtn
-            onClick={async () => { setOpeningPma(true); try { await onOpenPma() } finally { setOpeningPma(false) } }}
-            title={t('sites.openDatabase')}
-            disabled={!isRunning || openingPma}
-          >
-            {openingPma ? <Loader2 size={14} className="animate-spin" /> : <Database size={14} />}
-          </ActionBtn>
-          <ActionBtn onClick={onOpenTerminal}                              title={t('sites.openTerminal')}              ><TerminalSquare size={14} /></ActionBtn>
-          <ActionBtn onClick={onEdit}                                      title={t('sites.editSite')}   disabled={deleting || toggling}><Pencil size={14} /></ActionBtn>
-          <ActionBtn onClick={onDelete}                                    title={t('sites.deleteSite')} disabled={deleting || toggling} danger><Trash2 size={14} /></ActionBtn>
-        </div>
+        <button
+          onClick={onOpenDetails}
+          className="text-xs text-ink-ghost group-hover:text-brand-500 hover:text-brand-500 transition-colors hidden sm:block"
+        >
+          {t('sites.details')}
+        </button>
       </div>
     </div>
-  )
-}
-
-function ActionBtn({ children, onClick, title, danger, disabled }) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-      aria-label={title}
-      className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors disabled:opacity-40
-        ${danger ? 'text-ink-muted hover:text-red-400 hover:bg-red-400/10' : 'text-ink-muted hover:text-ink hover:bg-ink-10'}`}
-    >
-      {children}
-    </button>
   )
 }
 

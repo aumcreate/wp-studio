@@ -4,6 +4,7 @@ const path = require('path')
 const { createSite, startSite, stopSite, deleteSite, listSites, getSite, updateSite, updateSiteSharedTheme } = require('../services/siteService')
 const { getWordPressVersions } = require('../services/wordpress')
 const pmaService = require('../services/phpMyAdminService')
+const screenshotService = require('../services/screenshotService')
 
 function registerSiteHandlers(ipcMain) {
   ipcMain.handle('sites:list', async () => {
@@ -111,6 +112,43 @@ function registerSiteHandlers(ipcMain) {
     try {
       const site = getSite(siteId)
       return { ok: true, data: site }
+    } catch (err) {
+      return { ok: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('sites:getContent', async (_, siteId) => {
+    try {
+      return { ok: true, data: await screenshotService.getSiteContent(siteId) }
+    } catch (err) {
+      return { ok: false, error: err.message, code: err.code }
+    }
+  })
+
+  ipcMain.handle('sites:captureContent', async (event, { siteId, items, width }) => {
+    try {
+      const data = await screenshotService.captureSiteContent(siteId, items, width, (progress) => {
+        event.sender.send('site:screenshotProgress', progress)
+      })
+      return { ok: true, data }
+    } catch (err) {
+      return { ok: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('sites:openScreenshots', async (_, { siteId, outputDir }) => {
+    try {
+      const site = getSite(siteId)
+      if (!site) throw new Error('Site not found')
+      const screenshotsRoot = path.resolve(site.path, 'screenshots')
+      const target = path.resolve(outputDir)
+      const relative = path.relative(screenshotsRoot, target)
+      if (relative.startsWith('..') || path.isAbsolute(relative)) {
+        throw new Error('Invalid screenshot directory')
+      }
+      const error = await shell.openPath(target)
+      if (error) throw new Error(error)
+      return { ok: true }
     } catch (err) {
       return { ok: false, error: err.message }
     }
