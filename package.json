@@ -51,6 +51,7 @@
   "build": {
     "appId": "com.aum.wpstudio",
     "productName": "AUM WP Studio",
+    "artifactName": "AUM-WP-Studio-Setup-${version}.${ext}",
     "asar": false,
     "directories": {
       "output": "dist-electron"
