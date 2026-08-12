@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.2.1 — Screenshot reliability
+
+### Fixed
+
+- Prevent PHP diagnostics from being rendered into full-page screenshots.
+- Preload and reload WordPress pages before capture so Elementor can finish generating cached icon resources.
+- Keep PHP errors in local logs while disabling their direct output into site HTML.
+
 ## v0.2.0 — Site content & full-page screenshots
 
 ### New

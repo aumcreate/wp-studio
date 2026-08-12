@@ -6,6 +6,7 @@ const { getSite } = require('./siteService')
 const VIEWPORT_HEIGHT = 1000
 const WARM_SCROLL_STEP = 700
 const TOP_SETTLE_DELAY = 1800
+const PAGE_LOAD_SETTLE_DELAY = 700
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
@@ -111,6 +112,29 @@ async function evaluate(webContents, expression) {
   return webContents.executeJavaScript(`(${expression})()`, true)
 }
 
+async function hasServerDiagnostic(webContents) {
+  return evaluate(webContents, `() => {
+    const text = document.body?.innerText || ''
+    return /(?:Warning|Notice|Deprecated|Fatal error|Parse error):[\\s\\S]{0,700}?\\bon line \\d+\\b/i.test(text)
+  }`)
+}
+
+async function loadCleanPage(captureWindow, url) {
+  await captureWindow.loadURL(url)
+  await sleep(PAGE_LOAD_SETTLE_DELAY)
+
+  // A first request can cause WordPress/Elementor to generate cached icon or
+  // asset metadata. Load a fresh document after that initialization so the
+  // screenshot always represents the stable page response.
+  await captureWindow.loadURL('about:blank')
+  await captureWindow.loadURL(url)
+  await sleep(PAGE_LOAD_SETTLE_DELAY)
+
+  if (await hasServerDiagnostic(captureWindow.webContents)) {
+    throw new Error('The site returned a PHP diagnostic while preparing this screenshot. Check the local PHP error log and try again.')
+  }
+}
+
 async function warmPage(webContents) {
   return evaluate(webContents, `async () => {
     const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
@@ -181,7 +205,7 @@ async function captureFullPage({ url, width, destination, onProgress }) {
 
   try {
     onProgress?.('loading')
-    await captureWindow.loadURL(url)
+    await loadCleanPage(captureWindow, url)
     onProgress?.('warming')
     await warmPage(captureWindow.webContents)
     const debuggerClient = captureWindow.webContents.debugger

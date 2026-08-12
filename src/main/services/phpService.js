@@ -103,6 +103,30 @@ function getPhpExe(version) {
 function getPhpCgiExe(version) {
   return path.join(getPhpDir(version), process.platform === 'win32' ? 'php-cgi.exe' : 'php-cgi')
 }
+
+async function ensureRuntimePhpIni(version) {
+  const phpIniPath = path.join(getPhpDir(version), 'php.ini')
+  const requiredSettings = [
+    'display_errors = Off',
+    'display_startup_errors = Off',
+    'log_errors = On',
+    'error_reporting = E_ALL',
+  ]
+  const current = await fs.pathExists(phpIniPath) ? await fs.readFile(phpIniPath, 'utf8') : ''
+  const updated = requiredSettings.reduce((content, setting) => {
+    const name = setting.split('=')[0].trim()
+    const pattern = new RegExp(`^;?\\s*${name}\\s*=.*$`, 'im')
+    return pattern.test(content) ? content.replace(pattern, setting) : `${content.trimEnd()}\n${setting}\n`
+  }, current)
+
+  if (updated !== current) await fs.writeFile(phpIniPath, updated)
+}
+
+async function ensureInstalledPhpIni() {
+  for (const version of AVAILABLE_VERSIONS) {
+    if (await fs.pathExists(getPhpExe(version))) await ensureRuntimePhpIni(version)
+  }
+}
 function getCacheDir() {
   return path.join(app.getPath('userData'), '.cache')
 }
@@ -323,7 +347,7 @@ async function downloadVersion(version, onProgress) {
     proc.on('error', reject)
   })
 
-  // Minimal php.ini enabling the extensions WordPress requires
+  // Minimal php.ini enabling the extensions WordPress requires.
   const phpIni = [
     'extension_dir = "ext"',
     'extension=curl',
@@ -341,6 +365,7 @@ async function downloadVersion(version, onProgress) {
     'date.timezone = UTC',
   ].join('\n')
   await fs.writeFile(path.join(phpDir, 'php.ini'), phpIni)
+  await ensureRuntimePhpIni(version)
 
   setVersionState(version, 'installed', `PHP ${version} ready.`, 100)
   onProgress?.({ status: 'installed', message: `PHP ${version} ready.`, percent: 100 })
@@ -359,6 +384,7 @@ async function startFcgi(version, onProgress) {
   if (!await fs.pathExists(getPhpCgiExe(version))) {
     await downloadVersion(version, onProgress)
   }
+  await ensureRuntimePhpIni(version)
 
   const port = getFcgiPort(version)
   onProgress?.({ status: 'starting', message: `Starting PHP ${version} FastCGI on port ${port}...` })
@@ -449,6 +475,7 @@ async function ensureVersion(version, onProgress) {
 // Called during app startup to guarantee at least one usable PHP binary.
 async function ensureDefaultVersion(onProgress) {
   if (await hasAnyInstalledVersion()) {
+    await ensureInstalledPhpIni()
     console.log('[PHP] At least one PHP version already installed, skipping default download')
     return
   }
@@ -489,6 +516,7 @@ module.exports = {
   DEFAULT_PHP_VERSION,
   ensureVersion,
   ensureDefaultVersion,
+  ensureInstalledPhpIni,
   downloadVersion,
   startFcgi,
   stopFcgi,
