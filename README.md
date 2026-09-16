@@ -9,9 +9,13 @@
   <p>
     <a href="https://github.com/aumcreate/wp-studio/releases/latest">Download</a>
     &nbsp;&nbsp;·&nbsp;&nbsp;
-    <a href="https://app.aumcreate.cn">中文官网</a>
+    <a href="https://aumcreate.com/">English</a>
     &nbsp;&nbsp;·&nbsp;&nbsp;
-    <a href="https://app.aumcreate.com">Website</a>
+    <a href="https://aumcreate.com/zh-hans">简体中文</a>
+    &nbsp;&nbsp;·&nbsp;&nbsp;
+    <a href="https://aumcreate.com/zh-hant">繁體中文</a>
+    &nbsp;&nbsp;·&nbsp;&nbsp;
+    <a href="https://aumcreate.com/ja">日本語</a>
   </p>
 </div>
 
@@ -241,5 +245,5 @@ The command builds a draft GitHub Release and writes `dist-electron/checksums.tx
 ---
 
 <div align="center">
-  Built by <a href="https://app.aumcreate.com">AumCreate</a> · Free and open for theme builders.
+  Built by <a href="https://aumcreate.com/">AumCreate</a> · Free and open for theme builders.
 </div>
